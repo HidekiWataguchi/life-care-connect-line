@@ -6,6 +6,84 @@ const storePath = path.join(__dirname, "..", "..", "data", "store.json");
 
 let runtimeStore;
 
+const initialStore = {
+  residents: [
+    {
+      id: "r1",
+      name: "佐藤 花子",
+      age: 84,
+      area: "中央町",
+      family: "佐藤 健",
+      careManager: "山田ケアマネ",
+      status: "ok",
+      reply: "元気",
+      lastReply: "08:42",
+      risk: "服薬確認",
+      lineUserId: "",
+    },
+    {
+      id: "r2",
+      name: "鈴木 一郎",
+      age: 79,
+      area: "東町",
+      family: "鈴木 真由美",
+      careManager: "山田ケアマネ",
+      status: "pending",
+      reply: "未回答",
+      lastReply: "-",
+      risk: "独居",
+      lineUserId: "",
+    },
+    {
+      id: "r3",
+      name: "田中 美代",
+      age: 91,
+      area: "南町",
+      family: "田中 亮",
+      careManager: "森ケアマネ",
+      status: "alert",
+      reply: "連絡希望",
+      lastReply: "09:03",
+      risk: "転倒注意",
+      lineUserId: "",
+    },
+    {
+      id: "r4",
+      name: "高橋 勇",
+      age: 87,
+      area: "西町",
+      family: "高橋 恵",
+      careManager: "森ケアマネ",
+      status: "ok",
+      reply: "少し不調",
+      lastReply: "08:55",
+      risk: "血圧観察",
+      lineUserId: "",
+    },
+  ],
+  records: [
+    {
+      id: "rec1",
+      residentId: "r4",
+      type: "バイタル",
+      body: "朝のLINEで少し不調。訪問時に血圧確認予定。",
+      createdAt: "09:10",
+    },
+    {
+      id: "rec2",
+      residentId: "r1",
+      type: "服薬",
+      body: "朝薬は本人返信後に家族が確認済み。",
+      createdAt: "08:50",
+    },
+  ],
+  schedules: [
+    { time: "10:00", residentId: "r3", staff: "訪問介護A", note: "連絡希望のため優先訪問" },
+    { time: "11:30", residentId: "r4", staff: "看護師B", note: "血圧・食事量確認" },
+    { time: "15:00", residentId: "r2", staff: "訪問介護C", note: "未回答なら家族へ電話後に訪問" },
+  ],
+};
+
 const replyToStatus = {
   元気: "ok",
   少し不調: "ok",
@@ -97,7 +175,11 @@ async function publicState(event) {
 
 function readStore() {
   if (!runtimeStore) {
-    runtimeStore = JSON.parse(fs.readFileSync(storePath, "utf8"));
+    try {
+      runtimeStore = JSON.parse(fs.readFileSync(storePath, "utf8"));
+    } catch {
+      runtimeStore = structuredClone(initialStore);
+    }
   }
   return runtimeStore;
 }
@@ -255,4 +337,3 @@ function json(payload, statusCode = 200) {
 function currentTime() {
   return new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
 }
-
