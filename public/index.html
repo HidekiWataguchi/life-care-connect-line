@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LIFEケアコネクト</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js" defer></script>
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="アプリナビゲーション">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">L</div>
+          <div>
+            <p class="brand-name">LIFEケアコネクト</p>
+            <p class="brand-subtitle">LINE公式アカウント連携</p>
+          </div>
+        </div>
+
+        <nav class="nav-list" aria-label="主要メニュー">
+          <button class="nav-item active" type="button" data-view="dashboard" title="ダッシュボード">
+            <span aria-hidden="true">⌂</span>
+            <span>ダッシュボード</span>
+          </button>
+          <button class="nav-item" type="button" data-view="checkins" title="安否確認">
+            <span aria-hidden="true">✓</span>
+            <span>安否確認</span>
+          </button>
+          <button class="nav-item" type="button" data-view="records" title="介護記録">
+            <span aria-hidden="true">▤</span>
+            <span>介護記録</span>
+          </button>
+          <button class="nav-item" type="button" data-view="schedule" title="訪問予定">
+            <span aria-hidden="true">□</span>
+            <span>訪問予定</span>
+          </button>
+          <button class="nav-item" type="button" data-view="roles" title="権限管理">
+            <span aria-hidden="true">◎</span>
+            <span>権限管理</span>
+          </button>
+        </nav>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow" id="todayLabel">本日</p>
+            <h1>安否確認オペレーション</h1>
+          </div>
+          <div class="top-actions">
+            <label class="role-select">
+              <span>表示権限</span>
+              <select id="roleFilter">
+                <option value="office">事業所</option>
+                <option value="manager">ケアマネ</option>
+                <option value="family">家族</option>
+              </select>
+            </label>
+            <button class="primary-action" id="sendCheckin" type="button">LINE通知を送る</button>
+          </div>
+        </header>
+
+        <section class="integration-strip" aria-label="LINE連携状態">
+          <div>
+            <p class="eyebrow">LINE公式アカウント</p>
+            <strong id="lineModeLabel">ローカル確認モード</strong>
+          </div>
+          <div>
+            <p class="eyebrow">LIFF / LINE内画面</p>
+            <strong id="liffLabel">未初期化</strong>
+          </div>
+          <div>
+            <p class="eyebrow">Webhook</p>
+            <strong id="webhookLabel">/line/webhook</strong>
+          </div>
+        </section>
+
+        <section class="view active" id="dashboard">
+          <div class="kpi-grid" aria-label="本日の状況">
+            <article class="kpi">
+              <span class="kpi-label">確認済み</span>
+              <strong id="answeredCount">0</strong>
+              <span class="kpi-note">ボタン返信</span>
+            </article>
+            <article class="kpi warning">
+              <span class="kpi-label">未回答</span>
+              <strong id="pendingCount">0</strong>
+              <span class="kpi-note">再通知対象</span>
+            </article>
+            <article class="kpi danger">
+              <span class="kpi-label">要対応</span>
+              <strong id="alertCount">0</strong>
+              <span class="kpi-note">家族・事業所へ通知</span>
+            </article>
+            <article class="kpi">
+              <span class="kpi-label">本日の訪問</span>
+              <strong id="visitCount">0</strong>
+              <span class="kpi-note">予定連携</span>
+            </article>
+          </div>
+
+          <div class="dashboard-layout">
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">返信状況</p>
+                  <h2>利用者一覧</h2>
+                </div>
+                <button class="ghost-action" id="runEscalation" type="button">未回答を判定</button>
+              </div>
+              <div class="resident-list" id="residentList"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">自動エスカレーション</p>
+                  <h2>対応フロー</h2>
+                </div>
+              </div>
+              <ol class="timeline" id="escalationList"></ol>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="checkins">
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">本人は1タップ</p>
+                <h2>LINE通知プレビュー</h2>
+              </div>
+            </div>
+            <div class="line-preview">
+              <div class="line-message">
+                <p>おはようございます。今日の体調を教えてください。</p>
+                <div class="quick-replies">
+                  <button type="button" data-reply="元気">元気</button>
+                  <button type="button" data-reply="少し不調">少し不調</button>
+                  <button type="button" data-reply="連絡希望">連絡希望</button>
+                </div>
+              </div>
+            </div>
+            <div class="settings-grid">
+              <label>
+                <span>初回配信</span>
+                <input id="sendTime" type="time" value="08:30" />
+              </label>
+              <label>
+                <span>再通知まで</span>
+                <select id="remindAfter">
+                  <option>30分</option>
+                  <option selected>60分</option>
+                  <option>90分</option>
+                </select>
+              </label>
+              <label>
+                <span>要対応判定</span>
+                <select id="alertAfter">
+                  <option>90分</option>
+                  <option selected>120分</option>
+                  <option>180分</option>
+                </select>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" id="records">
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">ケア情報</p>
+                <h2>介護記録</h2>
+              </div>
+            </div>
+            <form class="record-form" id="recordForm">
+              <label>
+                <span>利用者</span>
+                <select id="recordResident"></select>
+              </label>
+              <label>
+                <span>記録種別</span>
+                <select id="recordType">
+                  <option>バイタル</option>
+                  <option>服薬</option>
+                  <option>食事</option>
+                  <option>申し送り</option>
+                </select>
+              </label>
+              <label class="wide">
+                <span>内容</span>
+                <textarea id="recordBody" rows="3" placeholder="例: 朝食7割、服薬済み。歩行ふらつきなし。"></textarea>
+              </label>
+              <button class="primary-action" type="submit">記録を追加</button>
+            </form>
+            <div class="record-list" id="recordList"></div>
+          </div>
+        </section>
+
+        <section class="view" id="schedule">
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">訪問・連携</p>
+                <h2>本日の訪問予定</h2>
+              </div>
+            </div>
+            <div class="schedule-list" id="scheduleList"></div>
+          </div>
+        </section>
+
+        <section class="view" id="roles">
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">情報共有範囲</p>
+                <h2>権限分け</h2>
+              </div>
+            </div>
+            <div class="role-grid">
+              <article>
+                <h3>家族</h3>
+                <p>安否結果、連絡希望、訪問予定の一部を確認できます。</p>
+              </article>
+              <article>
+                <h3>ケアマネ</h3>
+                <p>安否傾向、介護記録、予定、申し送りを横断して確認できます。</p>
+              </article>
+              <article>
+                <h3>事業所</h3>
+                <p>LINE配信、未回答対応、記録作成、全体管理を行えます。</p>
+              </article>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>

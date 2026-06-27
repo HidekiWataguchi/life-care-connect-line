@@ -1,0 +1,5 @@
+.env
+.netlify/
+node_modules/
+*.log
+

@@ -1,0 +1,13 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api?path=/api/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/line/webhook"
+  to = "/.netlify/functions/api?path=/line/webhook"
+  status = 200
