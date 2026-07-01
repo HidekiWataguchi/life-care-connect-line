@@ -703,3 +703,21 @@ textarea {
 .record-form-note {
   margin-bottom: 12px;
 }
+
+.resident-to-admin-btn {
+  align-self: center;
+  margin-top: 4px;
+}
+
+.resident-card.just-updated {
+  animation: card-flash 1.8s ease;
+}
+
+@keyframes card-flash {
+  0% {
+    box-shadow: 0 0 0 3px rgba(6, 199, 85, 0.55);
+  }
+  100% {
+    box-shadow: none;
+  }
+}

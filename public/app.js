@@ -189,6 +189,10 @@ function bindEvents() {
 
   document.querySelector("#residentSelect").addEventListener("change", renderResidentView);
   document.querySelector("#residentQuickReplies").addEventListener("click", onResidentQuickReply);
+  document.querySelector("#goAdminAfterReply").addEventListener("click", () => {
+    const residentId = document.querySelector("#residentSelect").value;
+    goToAdminAndHighlight(residentId);
+  });
 
   document.querySelectorAll(".nav-item").forEach((button) => {
     button.addEventListener("click", () => {
@@ -218,6 +222,20 @@ function setMode(mode) {
   document.querySelector("#modeAdminBtn").classList.toggle("active", !isResident);
   document.querySelector("#modeResidentBtn").setAttribute("aria-selected", String(isResident));
   document.querySelector("#modeAdminBtn").setAttribute("aria-selected", String(!isResident));
+}
+
+function goToAdminAndHighlight(residentId) {
+  setMode("admin");
+  const dashboardNav = document.querySelector('.nav-item[data-view="dashboard"]');
+  if (dashboardNav && !dashboardNav.hidden) dashboardNav.click();
+
+  requestAnimationFrame(() => {
+    const card = document.querySelector(`.resident-card[data-id="${residentId}"]`);
+    if (!card) return;
+    card.scrollIntoView({ behavior: "smooth", block: "center" });
+    card.classList.add("just-updated");
+    window.setTimeout(() => card.classList.remove("just-updated"), 2000);
+  });
 }
 
 function render() {
@@ -281,6 +299,7 @@ function renderResidents() {
   state.residents.forEach((resident) => {
     const card = document.createElement("article");
     card.className = "resident-card";
+    card.dataset.id = resident.id;
     const managerMeta = role === "family" ? "" : `<span class="pill">${resident.careManager}</span>`;
     const lineMeta = role === "office" ? `<span class="pill">${resident.lineUserId ? "LINE連携済み" : "LINE未連携"}</span>` : "";
 
@@ -385,11 +404,13 @@ function renderResidentView() {
   const replyBubble = document.querySelector("#residentReplyBubble");
   const replyText = document.querySelector("#residentReplyText");
   const hint = document.querySelector("#residentHint");
+  const goAdminBtn = document.querySelector("#goAdminAfterReply");
 
   quickReplies.hidden = answered;
   quickReplies.querySelectorAll("button").forEach((button) => {
     button.disabled = answered;
   });
+  goAdminBtn.hidden = !answered;
 
   if (answered) {
     replyBubble.hidden = false;

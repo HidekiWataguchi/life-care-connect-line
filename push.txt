@@ -1,0 +1,4 @@
+cd "C:\Users\hide-w\OneDrive - lpaoffice\ドキュメント 1\介護事業LINEアプリ"
+git add .
+git commit -m "本人画面と管理画面を分離し、権限別の表示制御を追加"
+git push
