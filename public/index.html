@@ -9,13 +9,63 @@
     <script src="app.js" defer></script>
   </head>
   <body>
-    <div class="app-shell">
+    <div class="mode-bar">
+      <div class="mode-bar-inner">
+        <p class="mode-bar-label">見る画面を選ぶ</p>
+        <div class="mode-toggle" role="tablist" aria-label="表示モード切り替え">
+          <button type="button" class="mode-btn active" id="modeResidentBtn" role="tab" aria-selected="true" data-mode="resident">
+            本人(介護対象者)の画面
+          </button>
+          <button type="button" class="mode-btn" id="modeAdminBtn" role="tab" aria-selected="false" data-mode="admin">
+            管理画面(事業所・ケアマネ・家族)
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <section class="resident-view" id="residentView">
+      <p class="resident-view-heading">ご本人がLINEで実際に見る画面です</p>
+      <div class="phone-wrap">
+        <div class="phone">
+          <div class="phone-status-bar" aria-hidden="true"><span>9:41</span></div>
+          <div class="phone-header">
+            <span class="phone-back" aria-hidden="true">‹</span>
+            <span class="phone-header-title">LIFEケアコネクト</span>
+          </div>
+          <div class="phone-chat">
+            <div class="chat-bubble-official">
+              <p id="residentMessageText">おはようございます。今日の体調を教えてください。</p>
+              <div class="chat-quick-replies" id="residentQuickReplies">
+                <button type="button" data-reply="元気">元気</button>
+                <button type="button" data-reply="少し不調">少し不調</button>
+                <button type="button" data-reply="連絡希望">連絡希望</button>
+              </div>
+            </div>
+            <div class="chat-bubble-user" id="residentReplyBubble" hidden>
+              <p id="residentReplyText"></p>
+            </div>
+            <p class="chat-hint" id="residentHint">ボタンをタップするだけで、ご家族と事業所に安否が伝わります。</p>
+          </div>
+        </div>
+      </div>
+      <div class="resident-demo-controls">
+        <label for="residentSelect">
+          <span>デモ用: どなたの画面として見ますか</span>
+          <select id="residentSelect"></select>
+        </label>
+        <p class="resident-demo-note">
+          実際のアプリでは、ご本人はご自身のLINEでこの画面だけを見ます。管理画面は表示されません。
+        </p>
+      </div>
+    </section>
+
+    <div class="app-shell" id="adminView" hidden>
       <aside class="sidebar" aria-label="アプリナビゲーション">
         <div class="brand">
           <div class="brand-mark" aria-hidden="true">L</div>
           <div>
             <p class="brand-name">LIFEケアコネクト</p>
-            <p class="brand-subtitle">LINE公式アカウント連携</p>
+            <p class="brand-subtitle">管理画面</p>
           </div>
         </div>
 
@@ -129,20 +179,22 @@
           <div class="panel">
             <div class="panel-header">
               <div>
-                <p class="eyebrow">本人は1タップ</p>
-                <h2>LINE通知プレビュー</h2>
+                <p class="eyebrow">配信内容の確認</p>
+                <h2>LINE通知プレビュー(本人にはこう見えます)</h2>
               </div>
+              <button class="ghost-action" id="goResidentView" type="button">本人側の画面を見る →</button>
             </div>
             <div class="line-preview">
               <div class="line-message">
                 <p>おはようございます。今日の体調を教えてください。</p>
-                <div class="quick-replies">
-                  <button type="button" data-reply="元気">元気</button>
-                  <button type="button" data-reply="少し不調">少し不調</button>
-                  <button type="button" data-reply="連絡希望">連絡希望</button>
+                <div class="quick-replies-static" aria-hidden="true">
+                  <span>元気</span>
+                  <span>少し不調</span>
+                  <span>連絡希望</span>
                 </div>
               </div>
             </div>
+            <p class="preview-note">これは配信メッセージの見本です。ここでの操作は本人の返信としては扱われません。</p>
             <div class="settings-grid">
               <label>
                 <span>初回配信</span>
@@ -176,6 +228,9 @@
                 <h2>介護記録</h2>
               </div>
             </div>
+            <p class="record-form-note" id="recordFormNote" hidden>
+              記録の追加は事業所が行います。ここでは閲覧のみできます。
+            </p>
             <form class="record-form" id="recordForm">
               <label>
                 <span>利用者</span>

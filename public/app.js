@@ -100,6 +100,27 @@ const replyStatus = {
   連絡希望: "alert",
 };
 
+const rolePermissions = {
+  office: {
+    nav: ["dashboard", "checkins", "records", "schedule", "roles"],
+    canSend: true,
+    canAddRecord: true,
+    residentActions: ["ok", "remind", "call"],
+  },
+  manager: {
+    nav: ["dashboard", "records", "schedule", "roles"],
+    canSend: false,
+    canAddRecord: false,
+    residentActions: ["ok"],
+  },
+  family: {
+    nav: ["dashboard", "schedule", "roles"],
+    canSend: false,
+    canAddRecord: false,
+    residentActions: [],
+  },
+};
+
 document.addEventListener("DOMContentLoaded", init);
 
 async function init() {
@@ -162,6 +183,13 @@ async function initLiff() {
 }
 
 function bindEvents() {
+  document.querySelector("#modeResidentBtn").addEventListener("click", () => setMode("resident"));
+  document.querySelector("#modeAdminBtn").addEventListener("click", () => setMode("admin"));
+  document.querySelector("#goResidentView")?.addEventListener("click", () => setMode("resident"));
+
+  document.querySelector("#residentSelect").addEventListener("change", renderResidentView);
+  document.querySelector("#residentQuickReplies").addEventListener("click", onResidentQuickReply);
+
   document.querySelectorAll(".nav-item").forEach((button) => {
     button.addEventListener("click", () => {
       document.querySelectorAll(".nav-item").forEach((item) => item.classList.remove("active"));
@@ -175,24 +203,57 @@ function bindEvents() {
   document.querySelector("#runEscalation").addEventListener("click", runEscalation);
   document.querySelector("#sendCheckin").addEventListener("click", sendCheckin);
   document.querySelector("#roleFilter").addEventListener("change", () => {
+    applyRolePermissions();
     renderResidents();
     showToast("表示範囲を切り替えました。");
   });
   document.querySelector("#recordForm").addEventListener("submit", addRecord);
+}
 
-  document.querySelectorAll(".quick-replies button").forEach((button) => {
-    button.addEventListener("click", () => simulateReply("r2", button.dataset.reply));
-  });
+function setMode(mode) {
+  const isResident = mode === "resident";
+  document.querySelector("#residentView").hidden = !isResident;
+  document.querySelector("#adminView").hidden = isResident;
+  document.querySelector("#modeResidentBtn").classList.toggle("active", isResident);
+  document.querySelector("#modeAdminBtn").classList.toggle("active", !isResident);
+  document.querySelector("#modeResidentBtn").setAttribute("aria-selected", String(isResident));
+  document.querySelector("#modeAdminBtn").setAttribute("aria-selected", String(!isResident));
 }
 
 function render() {
   renderIntegration();
   renderKpis();
+  applyRolePermissions();
   renderResidents();
   renderEscalation();
   renderRecords();
   renderSchedules();
   renderResidentOptions();
+  renderResidentView();
+}
+
+function currentPermissions() {
+  const role = document.querySelector("#roleFilter").value;
+  return rolePermissions[role] || rolePermissions.office;
+}
+
+function applyRolePermissions() {
+  const permissions = currentPermissions();
+
+  document.querySelectorAll(".nav-item").forEach((button) => {
+    button.hidden = !permissions.nav.includes(button.dataset.view);
+  });
+
+  const activeNav = document.querySelector(".nav-item.active");
+  if (!activeNav || activeNav.hidden) {
+    const fallback = document.querySelector(".nav-item:not([hidden])");
+    if (fallback) fallback.click();
+  }
+
+  document.querySelector("#sendCheckin").hidden = !permissions.canSend;
+  document.querySelector("#recordForm").hidden = !permissions.canAddRecord;
+  const recordFormNote = document.querySelector("#recordFormNote");
+  if (recordFormNote) recordFormNote.hidden = permissions.canAddRecord;
 }
 
 function renderIntegration() {
@@ -214,6 +275,7 @@ function renderKpis() {
 function renderResidents() {
   const list = document.querySelector("#residentList");
   const role = document.querySelector("#roleFilter").value;
+  const permissions = rolePermissions[role] || rolePermissions.office;
   list.innerHTML = "";
 
   state.residents.forEach((resident) => {
@@ -221,7 +283,19 @@ function renderResidents() {
     card.className = "resident-card";
     const managerMeta = role === "family" ? "" : `<span class="pill">${resident.careManager}</span>`;
     const lineMeta = role === "office" ? `<span class="pill">${resident.lineUserId ? "LINE連携済み" : "LINE未連携"}</span>` : "";
-    const officeAction = role === "office" ? `<button type="button" data-action="call" data-id="${resident.id}">電話記録</button>` : "";
+
+    const actionButtons = [];
+    if (permissions.residentActions.includes("ok")) {
+      actionButtons.push(`<button type="button" data-action="ok" data-id="${resident.id}">確認済み</button>`);
+    }
+    if (permissions.residentActions.includes("remind")) {
+      actionButtons.push(`<button type="button" data-action="remind" data-id="${resident.id}">再通知</button>`);
+    }
+    if (permissions.residentActions.includes("call")) {
+      actionButtons.push(`<button type="button" data-action="call" data-id="${resident.id}">電話記録</button>`);
+    }
+    const actionsMarkup = actionButtons.length ? actionButtons.join("") : '<span class="pill">閲覧のみ</span>';
+
     card.innerHTML = `
       <div>
         <strong>${resident.name}さん ${resident.age}歳</strong>
@@ -235,9 +309,7 @@ function renderResidents() {
         </div>
       </div>
       <div class="card-actions">
-        <button type="button" data-action="ok" data-id="${resident.id}">確認済み</button>
-        <button type="button" data-action="remind" data-id="${resident.id}">再通知</button>
-        ${officeAction}
+        ${actionsMarkup}
       </div>
     `;
     list.append(card);
@@ -297,6 +369,38 @@ function renderResidentOptions() {
   select.value = selected || state.residents[0]?.id || "";
 }
 
+function renderResidentView() {
+  const select = document.querySelector("#residentSelect");
+  const previousValue = select.value;
+  select.innerHTML = state.residents.map((resident) => `<option value="${resident.id}">${resident.name}さん</option>`).join("");
+  select.value = state.residents.some((resident) => resident.id === previousValue)
+    ? previousValue
+    : state.residents[0]?.id || "";
+
+  const resident = state.residents.find((item) => item.id === select.value);
+  if (!resident) return;
+
+  const answered = resident.status !== "pending";
+  const quickReplies = document.querySelector("#residentQuickReplies");
+  const replyBubble = document.querySelector("#residentReplyBubble");
+  const replyText = document.querySelector("#residentReplyText");
+  const hint = document.querySelector("#residentHint");
+
+  quickReplies.hidden = answered;
+  quickReplies.querySelectorAll("button").forEach((button) => {
+    button.disabled = answered;
+  });
+
+  if (answered) {
+    replyBubble.hidden = false;
+    replyText.textContent = resident.reply;
+    hint.textContent = "回答ありがとうございます。ご家族・事業所に共有されました。";
+  } else {
+    replyBubble.hidden = true;
+    hint.textContent = "ボタンをタップするだけで、ご家族と事業所に安否が伝わります。";
+  }
+}
+
 function residentName(id) {
   return state.residents.find((resident) => resident.id === id)?.name ?? "不明";
 }
@@ -334,6 +438,15 @@ async function onResidentAction(event) {
     await setResidentStatus(id, "alert", "電話対応中");
     showToast("事業所の電話対応ログを開始しました。");
   }
+}
+
+async function onResidentQuickReply(event) {
+  const button = event.target.closest("button[data-reply]");
+  if (!button || button.disabled) return;
+  const select = document.querySelector("#residentSelect");
+  const residentId = select.value || state.residents[0]?.id;
+  if (!residentId) return;
+  await simulateReply(residentId, button.dataset.reply);
 }
 
 async function sendCheckin() {
